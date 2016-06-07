@@ -778,6 +778,19 @@ static DDTTYLogger *sharedInstance;
     return bestIndex;
 }
 
+// Assuming NSCalendar is not a thread-safe class
++ (NSCalendar *)currentCalendar
+{
+    NSMutableDictionary *threadDictionary = [[NSThread currentThread] threadDictionary];
+    NSCalendar *calendar = [threadDictionary objectForKey:@"DDTTYLoggerCalendar"];
+    
+    if (calendar == nil) {
+        calendar = [NSCalendar autoupdatingCurrentCalendar];
+        [threadDictionary setObject:calendar forKey:@"DDTTYLoggerCalendar"];
+    }
+    return calendar;
+}
+
 + (instancetype)sharedInstance {
     static dispatch_once_t DDTTYLoggerOnceToken;
 
@@ -1268,7 +1281,8 @@ static DDTTYLogger *sharedInstance;
             // Calculate timestamp.
             // The technique below is faster than using NSDateFormatter.
             if (logMessage->_timestamp) {
-                NSDateComponents *components = [[NSCalendar currentCalendar] components:_calendarUnitFlags fromDate:logMessage->_timestamp];
+                NSCalendar *calendar = [DDTTYLogger currentCalendar];
+                NSDateComponents *components = [calendar components:_calendarUnitFlags fromDate:logMessage->_timestamp];
                 
                 NSTimeInterval epoch = [logMessage->_timestamp timeIntervalSinceReferenceDate];
                 int milliseconds = (int)((epoch - floor(epoch)) * 1000);
